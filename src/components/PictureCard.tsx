@@ -29,7 +29,7 @@ export const PictureCard: React.FC<PictureCardProps> = ({
         alt={card.label}
         className="w-full h-full object-cover"
       />
-      <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm p-2">
+      <div className="absolute bottom-0 left-0 right-0 bg-black/10 backdrop-blur-sm p-2">
         <p className="text-white text-sm font-medium truncate text-center">
           {card.label}
         </p>
