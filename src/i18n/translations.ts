@@ -1,6 +1,6 @@
 export const translations = {
-  appTitle: 'Autismus - Comunicação Aumentativa e Alternativa para o Autismo',
-  appDescription: 'Selecione imagens para comunicar o que quer dizer',
+  appTitle: 'Autismus',
+  appDescription: 'Comunicação Aumentativa e Alternativa',
   categories: {
     actions: 'Ações',
     animals: 'Animais',

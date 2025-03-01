@@ -147,8 +147,8 @@ export const CategoryList: React.FC<CategoryListProps> = ({
   };
 
   return (
-    <div className="py-6">
-      <div className="grid grid-cols-5 gap-4">
+    <div className="py-4 sm:py-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
         {displayCategories.map((category) => (
           <CategoryButton
             key={category.id}
@@ -168,12 +168,12 @@ export const CategoryList: React.FC<CategoryListProps> = ({
 
         <motion.button
           onClick={handleCreateCategory}
-          className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-100 transition-colors"
+          className="flex flex-col items-center justify-center p-3 sm:p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-100 transition-colors"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          <FolderPlus className="w-8 h-8 text-gray-400" />
-          <span className="mt-2 text-sm text-gray-600">Nova Categoria</span>
+          <FolderPlus className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+          <span className="mt-2 text-xs sm:text-sm text-gray-600">Nova Categoria</span>
         </motion.button>
       </div>
 
