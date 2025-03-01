@@ -7,7 +7,7 @@ import { Trash2 } from 'lucide-react';
 interface DraggableCardProps {
   card: PictureCardType;
   index: number;
-  onCardClick: () => void;
+  onClick: () => void;
   onDeleteCard: () => void;
   isSelected: boolean;
 }
@@ -15,10 +15,16 @@ interface DraggableCardProps {
 export const DraggableCard: React.FC<DraggableCardProps> = ({
   card,
   index,
-  onCardClick,
+  onClick,
   onDeleteCard,
   isSelected,
 }) => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onDeleteCard();
+  };
+
   return (
     <Draggable draggableId={card.id} index={index}>
       {(provided, snapshot) => (
@@ -36,13 +42,14 @@ export const DraggableCard: React.FC<DraggableCardProps> = ({
         >
           <PictureCard
             card={card}
-            onClick={onCardClick}
+            onClick={onClick}
             isSelected={isSelected}
           />
           {!card.isSystem && (
             <button
-              onClick={onDeleteCard}
-              className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={handleDelete}
+              className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600 active:bg-red-700 z-10"
+              aria-label={`Excluir ${card.label}`}
             >
               <Trash2 className="w-4 h-4" />
             </button>

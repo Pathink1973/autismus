@@ -183,3 +183,28 @@ export const getCards = async (): Promise<Card[]> => {
     }
   });
 };
+
+export const deleteCard = async (cardId: string): Promise<void> => {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction('cards', 'readwrite');
+      const store = tx.objectStore('cards');
+      const request = store.delete(cardId);
+
+      request.onsuccess = () => {
+        resolve();
+      };
+
+      request.onerror = () => {
+        reject(new Error('Falha ao excluir cartão'));
+      };
+
+      tx.oncomplete = () => {
+        resolve();
+      };
+    } catch (error) {
+      reject(error);
+    }
+  });
+};

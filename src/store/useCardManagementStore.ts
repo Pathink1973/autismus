@@ -24,7 +24,9 @@ interface CardManagementActions {
   addCustomCards: (cards: Omit<Card, 'id'>[]) => Promise<Card[]>;
   addCustomCategory: (category: Omit<Category, 'id'>) => Promise<Category>;
   deleteCategory: (categoryId: string) => Promise<void>;
+  deleteCard: (cardId: string) => Promise<void>;
   initialize: () => Promise<void>;
+  reorderCards: (sourceCategory: string, targetCategory: string, sourceIndex: number, targetIndex: number) => void;
 }
 
 type CardManagementStore = CardManagementState & CardManagementActions;
@@ -145,6 +147,54 @@ export const useCardManagementStore = create<CardManagementStore>((set, get) => 
       console.error('Failed to delete category:', error);
       throw new Error('Falha ao excluir categoria');
     }
+  },
+
+  deleteCard: async (cardId: string) => {
+    try {
+      const { cards } = get();
+      const cardToDelete = cards.find(c => c.id === cardId);
+      
+      if (!cardToDelete) {
+        throw new Error('Cartão não encontrado');
+      }
+
+      // Don't allow deletion of system cards
+      if (cardToDelete.isSystem) {
+        throw new Error('Não é possível excluir cartões do sistema');
+      }
+
+      // Delete from database
+      await db.deleteCard(cardId);
+      
+      // Update state
+      set(state => ({
+        cards: state.cards.filter(c => c.id !== cardId)
+      }));
+    } catch (error) {
+      console.error('Failed to delete card:', error);
+      throw error; // Re-throw to handle in the UI
+    }
+  },
+
+  reorderCards: (sourceCategory, targetCategory, sourceIndex, targetIndex) => {
+    set(state => {
+      const newCards = [...state.cards];
+      const sourceCards = newCards.filter(card => card.categoryId === sourceCategory);
+      const [movedCard] = sourceCards.splice(sourceIndex, 1);
+      
+      if (movedCard) {
+        movedCard.categoryId = targetCategory;
+        const targetCards = newCards.filter(card => card.categoryId === targetCategory);
+        targetCards.splice(targetIndex, 0, movedCard);
+        
+        // Update the order property for all affected cards
+        targetCards.forEach((card, index) => {
+          card.order = index;
+        });
+      }
+      
+      return { cards: newCards };
+    });
   }
 }));
 

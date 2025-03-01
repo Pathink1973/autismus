@@ -19,24 +19,19 @@ export const DroppableGrid: React.FC<DroppableGridProps> = ({
   selectedCardIds,
 }) => {
   return (
-    <Droppable
-      droppableId={`category-${categoryId}`}
-      direction="horizontal"
-      type="PICTURE_CARD"
-    >
+    <Droppable droppableId={`category-${categoryId}`} direction="horizontal">
       {(provided) => (
         <div
-          {...provided.droppableProps}
           ref={provided.innerRef}
+          {...provided.droppableProps}
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4"
-          style={{ display: 'grid' }}
         >
           {cards.map((card, index) => (
             <DraggableCard
               key={card.id}
               card={card}
               index={index}
-              onCardClick={() => onCardClick(card)}
+              onClick={() => onCardClick(card)}
               onDeleteCard={() => onDeleteCard(card.id)}
               isSelected={selectedCardIds.has(card.id)}
             />

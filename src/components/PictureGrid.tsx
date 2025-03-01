@@ -15,7 +15,7 @@ interface PictureGridProps {
 }
 
 export const PictureGrid: React.FC<PictureGridProps> = ({ categoryId }) => {
-  const { selectedCards, addCard } = useStore();
+  const { selectedCards, addCard, removeCard } = useStore();
   const { cards, addCustomCard, deleteCard, reorderCards, isLoading, error } = useCardManagementStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
@@ -70,6 +70,22 @@ export const PictureGrid: React.FC<PictureGridProps> = ({ categoryId }) => {
     addCard(card);
     // Speak the card's voice label or label when clicked
     speak(card.voiceLabel || card.label);
+  };
+
+  const handleDeleteCard = async (cardId: string) => {
+    try {
+      await deleteCard(cardId);
+      // Also remove from selected cards if it was selected
+      if (selectedCardIds.has(cardId)) {
+        const selectedCard = selectedCards.find(card => card.id === cardId);
+        if (selectedCard) {
+          removeCard(selectedCard.id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete card:', error);
+      alert(error instanceof Error ? error.message : 'Falha ao excluir o cartão');
+    }
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -139,7 +155,7 @@ export const PictureGrid: React.FC<PictureGridProps> = ({ categoryId }) => {
           categoryId={categoryId}
           cards={filteredCards}
           onCardClick={handleCardClick}
-          onDeleteCard={(cardId) => deleteCard(cardId)}
+          onDeleteCard={handleDeleteCard}
           selectedCardIds={selectedCardIds}
         />
 
