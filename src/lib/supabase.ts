@@ -190,19 +190,38 @@ export const getRedirectUrl = () => {
 // Export a helper function for Google sign-in that includes the correct redirect URL
 export const signInWithGoogle = async () => {
   try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: getRedirectUrl(),
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+    // For production, we don't need to specify the redirectTo
+    // This lets Supabase handle the redirect automatically based on the Site URL in the Supabase dashboard
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // Development environment
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
-      }
-    });
-    
-    if (error) throw error;
-    return { data, error: null };
+      });
+      
+      if (error) throw error;
+      return { data, error: null };
+    } else {
+      // Production environment
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
+      });
+      
+      if (error) throw error;
+      return { data, error: null };
+    }
   } catch (error) {
     console.error('Login error:', error);
     return { data: null, error };
