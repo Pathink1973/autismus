@@ -33,8 +33,14 @@ export const PictureCard: React.FC<PictureCardProps> = ({
         className="w-full h-full object-cover"
         onError={(e) => {
           const img = e.target as HTMLImageElement;
-          img.src = '/placeholder.png'; // Add a placeholder image
-          img.onerror = null; // Prevent infinite loop
+          // Use a data URL for a simple colored placeholder instead of relying on an external file
+          // This ensures it works even if the placeholder.png file is missing
+          img.src = 'data:image/svg+xml;charset=utf-8,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 1 1%22 width%3D%22300%22 height%3D%22200%22%3E%3Crect width%3D%221%22 height%3D%221%22 fill%3D%22%23cccccc%22%2F%3E%3C%2Fsvg%3E';
+          // Fallback to placeholder.png if available
+          img.onerror = () => {
+            img.src = '/placeholder.png';
+            img.onerror = null; // Prevent infinite loop
+          };
         }}
       />
       <div className="absolute bottom-0 left-0 right-0 bg-black/20 backdrop-blur-sm p-2">
