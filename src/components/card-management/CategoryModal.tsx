@@ -3,102 +3,150 @@ import { X } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useCardManagementStore } from '@/store/useCardManagementStore';
+import { supabase } from '@/lib/supabase';
 
-interface CategoryFormState {
+interface FormState {
   name: string;
   icon: string;
   color: string;
 }
 
-const EMOJI_OPTIONS = [
-  '📁', '📚', '🎮', '🎨', '🎵', '🎬', '📱', '💡', '🌟', '🎯',
-  '🏆', '🎪', '🎭', '🎪', '🎨', '🎼', '📷', '🎲', '🎯', '🎪'
-];
+interface Card {
+  id: string;
+  name: string;
+  image_url: string;
+  storage_path: string;
+  category_id: string;
+  user_id: string;
+  order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface DatabaseCategory {
+  id: string;
+  name: string;
+  user_id: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 interface CategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  categoryToEdit?: {
+    id: string;
+    name: string;
+    icon: string;
+    color?: string;
+  };
 }
 
-export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose }) => {
-  const {
-    addCustomCategory,
-    temporaryCategory,
-    setTemporaryCategory,
-    categories,
-  } = useCardManagementStore();
+const CATEGORY_ICONS = [
+  '📁', '🎨', '🎮', '🎵', '🍽️', '👕', '🏠', '🚗', '📚', '🎭',
+  '🌞', '🌙', '🌈', '🎪', '🎠', '🎡', '🎢', '🎯', '🎲', '🎰',
+  '🎳', '🎼', '🎹', '🎸', '🎺', '🎻', '🎤', '🎧', '📱', '💻'
+];
 
-  const [formState, setFormState] = useState<CategoryFormState>({
-    name: temporaryCategory?.name || '',
-    icon: temporaryCategory?.icon || '📁',
-    color: temporaryCategory?.color || '#808080',
+export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, categoryToEdit }) => {
+  const { addCustomCategory, updateCategory } = useCardManagementStore();
+  const [formState, setFormState] = useState<FormState>({
+    name: categoryToEdit?.name || '',
+    icon: categoryToEdit?.icon || '📁',
+    color: categoryToEdit?.color || '#3B82F6'
   });
 
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
   useEffect(() => {
-    if (isOpen && temporaryCategory) {
+    if (categoryToEdit) {
       setFormState({
-        name: temporaryCategory.name,
-        icon: temporaryCategory.icon,
-        color: temporaryCategory.color,
+        name: categoryToEdit.name,
+        icon: categoryToEdit.icon,
+        color: categoryToEdit.color || '#3B82F6'
       });
     }
-  }, [isOpen, temporaryCategory]);
-
-  const handleClose = () => {
-    setTemporaryCategory(null);
-    onClose();
-  };
+  }, [categoryToEdit]);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formState.name.trim()) {
-      setError('Por favor, insira um nome para a categoria');
+    const trimmedName = formState.name.trim();
+
+    if (!trimmedName) {
+      setError('O nome da categoria é obrigatório');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      
-      // Find similar system category to determine group
-      const similarCategory = categories.find(cat => 
-        cat.isSystem && 
-        (cat.name.toLowerCase().includes(formState.name.toLowerCase()) ||
-         formState.name.toLowerCase().includes(cat.name.toLowerCase()))
-      );
+      setError(null);
 
-      await addCustomCategory({
-        name: formState.name,
-        icon: formState.icon,
-        color: formState.color,
-        isSystem: false,
-        group: similarCategory?.group || 'social' // Use similar category's group or default to 'social'
-      });
-      
+      // Validate icon before sending
+      if (!formState.icon || formState.icon.trim() === '') {
+        setError('O ícone da categoria é obrigatório');
+        return;
+      }
+
+      if (categoryToEdit) {
+        // Update existing category
+        await updateCategory({
+          id: categoryToEdit.id,
+          name: trimmedName,
+          icon: formState.icon,
+          color: formState.color || '#3B82F6'
+        });
+      } else {
+        // Create new category
+        await addCustomCategory({
+          name: trimmedName,
+          icon: formState.icon,
+          color: formState.color || '#3B82F6'
+        });
+      }
+
+      // Close modal on success
       handleClose();
-    } catch (error) {
-      console.error('Error creating category:', error);
-      alert('Erro ao criar categoria. Por favor, tente novamente.');
+    } catch (err) {
+      console.error('Error creating category:', err);
+      // Enhanced error handling
+      if (err instanceof Error) {
+        if (err.message.includes('icon')) {
+          setError('Erro ao salvar o ícone da categoria. Por favor, tente outro ícone.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Erro ao criar categoria. Por favor, tente novamente.');
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleClose = () => {
+    setFormState({
+      name: '',
+      icon: '📁',
+      color: '#3B82F6'
+    });
+    setError(null);
+    setIsSubmitting(false);
+    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Nova Categoria</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            {categoryToEdit ? 'Editar Categoria' : 'Nova Categoria'}
+          </h2>
           <button
             onClick={handleClose}
             type="button"
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             disabled={isSubmitting}
           >
             <X className="w-6 h-6" />
@@ -107,51 +155,44 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg text-sm">
               {error}
             </div>
           )}
 
-          <div className="flex gap-4">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="w-16 h-16 text-3xl bg-gray-100 rounded-lg hover:bg-gray-200 flex items-center justify-center"
-                disabled={isSubmitting}
-              >
-                {formState.icon}
-              </button>
-              {showEmojiPicker && (
-                <div className="absolute top-full left-0 mt-2 z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-2">
-                  <div className="grid grid-cols-5 gap-2">
-                    {EMOJI_OPTIONS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => {
-                          setFormState({ ...formState, icon: emoji });
-                          setShowEmojiPicker(false);
-                        }}
-                        className="w-8 h-8 text-xl hover:bg-gray-100 rounded flex items-center justify-center"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <Input
-                type="text"
-                label="Nome da Categoria"
-                value={formState.name}
-                onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                placeholder="Digite o nome da categoria"
-                required
-                disabled={isSubmitting}
-              />
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Nome da Categoria
+            </label>
+            <Input
+              id="name"
+              type="text"
+              value={formState.name}
+              onChange={(e) => setFormState(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Digite o nome da categoria"
+              required
+              disabled={isSubmitting}
+              maxLength={50}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Ícone da Categoria
+            </label>
+            <div className="grid grid-cols-10 gap-2 p-2 border rounded-lg dark:border-gray-600">
+              {CATEGORY_ICONS.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  onClick={() => setFormState(prev => ({ ...prev, icon }))}
+                  className={`w-8 h-8 text-lg flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                    formState.icon === icon ? 'bg-blue-100 dark:bg-blue-900' : ''
+                  }`}
+                >
+                  {icon}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -168,7 +209,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Criando...' : 'Criar Categoria'}
+              {isSubmitting ? (categoryToEdit ? 'Salvando...' : 'Criando...') : 
+               (categoryToEdit ? 'Salvar Alterações' : 'Criar Categoria')}
             </Button>
           </div>
         </form>

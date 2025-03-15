@@ -4,6 +4,7 @@ export interface Category {
   icon: string;
   color: string;
   isSystem?: boolean;
+  group?: string;
 }
 
 export interface PictureCard {

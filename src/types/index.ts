@@ -2,10 +2,27 @@ export interface Category {
   id: string;
   name: string;
   icon: string;
-  color: string;
+  color: string; // Hex color code
   isSystem: boolean;
   isTemporary?: boolean;
-  group?: string; // Add group field to categorize similar categories together
+  group?: string;
+}
+
+export interface CloudinaryMetadata {
+  public_id: string;
+}
+
+export interface Card {
+  id: string;
+  name: string;
+  image_url: string;
+  category_id: string;
+  user_id: string;
+  order: number;
+  storage_path?: string;
+  display_name?: string;
+  isSystem?: boolean;
+  cloudinary_metadata?: CloudinaryMetadata;
 }
 
 export interface PictureCard {
@@ -13,10 +30,11 @@ export interface PictureCard {
   categoryId: string;
   imageUrl: string;
   label: string;
-  voiceLabel?: string;
+  voiceLabel: string;
   isSystem?: boolean;
   order?: number;
   createdAt?: string;
+  cloudinary_metadata?: CloudinaryMetadata;
 }
 
 export interface CardManagementStore {
@@ -35,4 +53,10 @@ export interface CommunicationStore {
   addCard: (card: PictureCard) => void;
   removeCard: (cardId: string) => void;
   clearCards: () => void;
+}
+
+export interface CloudinaryUploadResult {
+  public_id: string;
+  secure_url: string;
+  error?: string;
 }

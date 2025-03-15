@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Upload } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, LogIn } from 'lucide-react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { useStore } from '../store/useStore';
 import { useCardManagementStore } from '../store/useCardManagementStore';
 import { CardManagementModal } from './card-management/CardManagementModal';
-import { BulkUploadModal } from './card-management/BulkUploadModal';
-import { processImage } from '../utils/imageProcessor';
 import { DroppableGrid } from './dnd/DroppableGrid';
-import { PictureCard } from './PictureCard';
+import { DraggableCard } from './dnd/DraggableCard';
 import { speak } from '../utils/speech';
+import { supabase } from '../lib/supabase';
+import { PictureCard } from '../types';
 
 interface PictureGridProps {
   categoryId: string | null;
@@ -16,163 +16,196 @@ interface PictureGridProps {
 
 export const PictureGrid: React.FC<PictureGridProps> = ({ categoryId }) => {
   const { selectedCards, addCard, removeCard } = useStore();
-  const { cards, addCustomCard, deleteCard, reorderCards, isLoading, error } = useCardManagementStore();
+  const { cards, deleteCard, reorderCards, isLoading, error, initialize } = useCardManagementStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
-  const selectedCardIds = new Set(selectedCards.map(card => card.id));
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
 
-  const filteredCards = categoryId
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (categoryId) {
+      initialize();
+    }
+  }, [categoryId, initialize]);
+
+  const selectedCardIds = new Set(selectedCards.map((card: PictureCard) => card.id));
+
+  const filteredCards = categoryId && user
     ? cards.filter(card => card.categoryId === categoryId)
         .sort((a, b) => (a.order || 0) - (b.order || 0))
-    : cards;
-
-  const handleBulkUpload = async (files: FileList, selectedCategoryId: string, cardData: any) => {
-    try {
-      // Process each file one by one using processImage
-      for (const file of Array.from(files)) {
-        try {
-          // Process the image using our utility function
-          const processedImage = await processImage(file);
-
-          // Create card name from filename
-          const fileName = file.name.split('.')[0]
-            .replace(/-/g, ' ')
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ');
-
-          // Add the card using same method as single upload
-          await addCustomCard({
-            categoryId: selectedCategoryId,
-            name: fileName,
-            label: fileName,
-            description: cardData?.description || fileName,
-            audioDescription: cardData?.audioDescription || fileName,
-            imageUrl: processedImage,
-            isSystem: false
-          });
-        } catch (error) {
-          console.error(`Failed to process ${file.name}:`, error);
-          alert(`Failed to process ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-      }
-
-      console.log(`Successfully uploaded ${files.length} images`);
-      setIsBulkModalOpen(false);
-    } catch (error) {
-      console.error('Failed to process images:', error);
-      alert(error instanceof Error ? error.message : 'Failed to upload images');
-    }
-  };
+    : [];
 
   const handleCardClick = (card: PictureCard) => {
+    if (!user) {
+      return;
+    }
     addCard(card);
-    // Speak the card's voice label or label when clicked
     speak(card.voiceLabel || card.label);
   };
 
   const handleDeleteCard = async (cardId: string) => {
+    if (!user) {
+      return;
+    }
     try {
       await deleteCard(cardId);
-      // Also remove from selected cards if it was selected
       if (selectedCardIds.has(cardId)) {
-        const selectedCard = selectedCards.find(card => card.id === cardId);
-        if (selectedCard) {
-          removeCard(selectedCard.id);
-        }
+        removeCard(cardId);
       }
     } catch (error) {
-      console.error('Failed to delete card:', error);
-      alert(error instanceof Error ? error.message : 'Falha ao excluir o cartão');
+      console.error('Error deleting card:', error);
     }
   };
 
   const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+    if (!result.destination || !categoryId) return;
 
-    const sourceDroppableId = result.source.droppableId;
-    const destinationDroppableId = result.destination.droppableId;
-    
-    const sourceCategory = sourceDroppableId.replace('category-', '');
-    const targetCategory = destinationDroppableId.replace('category-', '');
-    
-    reorderCards(
-      sourceCategory,
-      targetCategory,
-      result.source.index,
-      result.destination.index
-    );
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+
+    reorderCards(categoryId, categoryId, sourceIndex, destinationIndex);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-red-500">{error}</p>
-      </div>
-    );
-  }
-
-  if (!categoryId) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Selecione uma categoria para ver os cartões</p>
-      </div>
-    );
-  }
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    if (categoryId) {
+      initialize();
+    }
+  };
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="p-3 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+    <div className="space-y-6">
+      {categoryId && (
+        <div className="flex flex-wrap gap-3 py-4 px-2">
+          {user && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm sm:text-base"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-2xl border border-emerald-400 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
             >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-              Adicionar Cartão
+              <Plus className="w-5 h-5" />
+              <span className="font-medium">Adicionar Imagem</span>
             </button>
-            <button
-              onClick={() => setIsBulkModalOpen(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm sm:text-base"
-            >
-              <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
-              Upload em Lote
-            </button>
+          )}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
           </div>
         </div>
+      ) : error ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-800">
+            <div className="text-red-600 dark:text-red-400 font-medium">{error}</div>
+          </div>
+        </div>
+      ) : categoryId ? (
+        !user ? (
+          <div className="flex flex-col items-center justify-center h-85 text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col items-center space-y-4 p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-xl border border-gray-100 dark:border-gray-700 transform hover:scale-[1.02] transition-all duration-300">
+              <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <LogIn className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Entre com a sua conta Google
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                Personalize o Autismus à sua maneira.
+              </p>
+            </div>
+          </div>
+        ) : filteredCards.length > 0 ? (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <DroppableGrid droppableId={`category-${categoryId}`}>
+              {filteredCards.map((card, index) => (
+                <DraggableCard
+                  key={card.id}
+                  card={card}
+                  index={index}
+                  onClick={() => handleCardClick(card)}
+                  onDeleteCard={() => handleDeleteCard(card.id)}
+                  isSelected={selectedCardIds.has(card.id)}
+                />
+              ))}
+            </DroppableGrid>
+          </DragDropContext>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-85 text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col items-center space-y-4 p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-xl border border-gray-100 dark:border-gray-700 transform hover:scale-[1.02] transition-all duration-300">
+              <div className="p-4 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
+                <Plus className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                Nenhuma imagem encontrada
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                Clique em "Adicionar Imagem" para começar a criar seu conteúdo personalizado
+              </p>
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="flex flex-col items-center justify-center h-85 text-gray-600 dark:text-gray-400">
+          {!user ? (
+            <div className="flex flex-col items-center space-y-4 p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-xl border border-gray-100 dark:border-gray-700 transform hover:scale-[1.02] transition-all duration-300">
+              <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <LogIn className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Faça login com a sua conta Google
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                Personalize o Autismus à sua maneira.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center space-y-4 p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-xl border border-gray-100 dark:border-gray-700 transform hover:scale-[1.02] transition-all duration-300">
+              <div className="p-4 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
+                <Plus className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                Bem-vindo ao Autismus CAA
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                Selecione uma categoria para explorar e criar conteúdo.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
-        <DroppableGrid
-          categoryId={categoryId}
-          cards={filteredCards}
-          onCardClick={handleCardClick}
-          onDeleteCard={handleDeleteCard}
-          selectedCardIds={selectedCardIds}
-        />
-
-        <CardManagementModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onAddCard={addCustomCard}
-          categoryId={categoryId}
-        />
-
-        <BulkUploadModal
-          isOpen={isBulkModalOpen}
-          onClose={() => setIsBulkModalOpen(false)}
-          onUpload={(files, cardData) => handleBulkUpload(files, categoryId, cardData)}
-          categoryId={categoryId}
-        />
-      </div>
-    </DragDropContext>
+      <CardManagementModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        categoryId={categoryId || ''}
+        onAddCard={async (card) => {
+          handleCardClick({
+            ...card,
+            id: Date.now().toString(),
+            voiceLabel: card.label,
+            isSystem: false
+          });
+        }}
+      />
+    </div>
   );
 };

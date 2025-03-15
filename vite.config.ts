@@ -3,7 +3,22 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
+// https://vitejs.dev/config/
+// Configure Vite for proper public asset handling
 export default defineConfig({
+  base: './',
+  server: {
+    host: 'localhost',
+    port: 4000,
+    strictPort: true,
+    proxy: {
+      '/.auth': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  },
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
@@ -11,7 +26,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@public': path.resolve(__dirname, './public'),
     },
   },
   publicDir: 'public',

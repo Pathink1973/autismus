@@ -1,13 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Upload, FolderPlus, Trash2 } from 'lucide-react';
-import { CardManagementModal } from './card-management/CardManagementModal';
-import { BulkUploadModal } from './card-management/BulkUploadModal';
-import { CategoryModal } from './card-management/CategoryModal';
-import { Button } from './ui/Button';
-import { useCardManagementStore } from '@/store/useCardManagementStore';
-import { Category } from '@/types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useCardManagementStore } from '../store/useCardManagementStore';
+import { Category } from '../types';
 import { speak } from '../utils/speech';
+import { NewCategoryModal } from './card-management/NewCategoryModal';
+import { Edit2, Trash2, Plus, Lock } from 'lucide-react';
+import { Button } from './ui/Button';
+import { supabase } from '../lib/supabase';
 
 interface CategoryListProps {
   selectedCategory: string | null;
@@ -16,32 +15,48 @@ interface CategoryListProps {
 
 const SELECT_CATEGORY_ID = 'select-category';
 
-export const CategoryList: React.FC<CategoryListProps> = ({
+export const CategoryList: React.FC<CategoryListProps> = React.memo(({
   selectedCategory,
   onSelect,
 }) => {
-  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
-  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const {
-    addCustomCard,
     categories,
-    deleteCategory,
     temporaryCategory,
-    setTemporaryCategory,
+    deleteCategory,
   } = useCardManagementStore();
 
-  // Check if there are any custom categories or temporary category
-  const hasCustomCategories = useMemo(() => {
-    return categories.some(category => !category.isSystem) || temporaryCategory !== null;
-  }, [categories, temporaryCategory]);
+  const [isNewCategoryModalOpen, setIsNewCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+    };
+    checkAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
 
   // Sort categories by group and name
   const displayCategories = useMemo(() => {
     let allCategories = [...categories];
+    
+    // Only show system categories if not authenticated
+    if (!isAuthenticated) {
+      allCategories = allCategories.filter(cat => cat.isSystem);
+    }
+    
     if (temporaryCategory) {
       // Find similar system category to determine group
-      const similarCategory = categories.find(cat => 
+      const similarCategory = categories.find((cat: Category) => 
         cat.isSystem && 
         (cat.name.toLowerCase().includes(temporaryCategory.name.toLowerCase()) ||
          temporaryCategory.name.toLowerCase().includes(cat.name.toLowerCase()))
@@ -54,196 +69,219 @@ export const CategoryList: React.FC<CategoryListProps> = ({
       });
     }
 
-    if (!hasCustomCategories) return allCategories;
-
     const selectCategory: Category = {
       id: SELECT_CATEGORY_ID,
-      name: 'Selecione uma categoria',
-      icon: '📋',
-      color: '#gray',
+      name: isAuthenticated ? 'Selecione uma categoria' : 'Categorias Bloqueadas',
+      icon: isAuthenticated ? '📋' : '🔒',
+      color: '#6b7280',
       isSystem: true,
-      group: 'social'
+      group: 'actions'
     };
 
     // Sort categories by group and then by name
     return [selectCategory, ...allCategories].sort((a, b) => {
+      // Special handling for "Categorias Bloqueadas"
+      if (!isAuthenticated) {
+        if (a.id === SELECT_CATEGORY_ID) return -1;
+        if (b.id === SELECT_CATEGORY_ID) return 1;
+      }
+
+      // Then sort by group and name
       if (a.group === b.group) {
+        // For the actions group, ensure "Categorias Bloqueadas" comes first
+        if (a.group === 'actions') {
+          if (a.id === SELECT_CATEGORY_ID) return -1;
+          if (b.id === SELECT_CATEGORY_ID) return 1;
+        }
         return a.name.localeCompare(b.name);
       }
       return (a.group || '').localeCompare(b.group || '');
     });
-  }, [categories, hasCustomCategories, temporaryCategory]);
+  }, [categories, temporaryCategory, isAuthenticated]);
 
-  const handleBulkUpload = async (files: FileList, categoryId: string, cardData: any) => {
-    if (!categoryId || categoryId === SELECT_CATEGORY_ID) {
-      alert('Por favor, selecione uma categoria válida');
-      return;
-    }
 
-    try {
-      // Process each file
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
-        
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          addCustomCard({
-            id: `custom-${Date.now()}-${i}`,
-            categoryId,
-            name: `${cardData.name} ${i + 1}`,
-            description: cardData.description,
-            audioDescription: cardData.audioDescription,
-            imageUrl: base64,
-          });
-        };
-        
-        reader.readAsDataURL(file);
-      }
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      alert('Erro ao fazer upload das imagens');
-    }
-  };
-
-  const handleDeleteCategory = async (categoryId: string, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (window.confirm('Tem certeza que deseja excluir esta categoria? Todos os cartões desta categoria serão excluídos.')) {
-      try {
-        await deleteCategory(categoryId);
-        if (selectedCategory === categoryId) {
-          onSelect(SELECT_CATEGORY_ID);
-        }
-      } catch (error: any) {
-        console.error('Erro ao excluir categoria:', error);
-        alert(error.message || 'Não foi possível excluir a categoria. Por favor, tente novamente.');
-      }
-    }
-  };
 
   const handleCategoryClick = (categoryId: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
+    if (!isAuthenticated && categoryId !== SELECT_CATEGORY_ID) {
+      return;
+    }
+    onSelect(categoryId);
+    const category = displayCategories.find(c => c.id === categoryId);
     if (category) {
       speak(category.name);
     }
-    onSelect(categoryId);
   };
 
-  const handleCreateCategory = () => {
-    // Create a temporary category
-    const tempCategory: Category = {
-      id: `temp-${Date.now()}`,
-      name: 'Nova Categoria',
-      icon: '📁',
-      color: '#808080',
-      isSystem: false,
-      isTemporary: true,
-      // Group will be assigned when the category is saved based on its name
-    };
-    setTemporaryCategory(tempCategory);
-    setIsCategoryModalOpen(true);
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (window.confirm('Tem certeza que deseja excluir esta categoria?')) {
+      try {
+        await deleteCategory(categoryId);
+      } catch (error) {
+        console.error('Error deleting category:', error);
+      }
+    }
   };
+
+
 
   return (
-    <div className="py-4 sm:py-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-        {displayCategories.map((category) => (
-          <CategoryButton
-            key={category.id}
-            category={category}
-            isSelected={selectedCategory === category.id}
-            onClick={() => handleCategoryClick(category.id)}
-            onDelete={
-              !category.isSystem
-                ? (e) => {
-                    e.stopPropagation();
-                    deleteCategory(category.id);
-                  }
-                : undefined
-            }
-          />
-        ))}
-
-        <motion.button
-          onClick={handleCreateCategory}
-          className="flex flex-col items-center justify-center p-3 sm:p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 hover:bg-gray-100 transition-colors"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <FolderPlus className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
-          <span className="mt-2 text-xs sm:text-sm text-gray-600">Nova Categoria</span>
-        </motion.button>
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Categorias</h2>
+        {isAuthenticated && (
+          <Button
+            onClick={() => setIsNewCategoryModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Categoria
+          </Button>
+        )}
       </div>
 
-      <CardManagementModal
-        isOpen={isCardModalOpen}
-        onClose={() => setIsCardModalOpen(false)}
-        categoryId={selectedCategory}
-      />
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pb-4">
+        <AnimatePresence>
+          {displayCategories.map((category) => (
+            <CategoryButton
+              key={category.id}
+              category={category}
+              isSelected={selectedCategory === category.id}
+              onClick={() => handleCategoryClick(category.id)}
+              onEdit={isAuthenticated && !category.isSystem ? () => setEditingCategory(category) : undefined}
+              onDelete={isAuthenticated && !category.isSystem ? () => handleDeleteCategory(category.id) : undefined}
+              isAuthenticated={isAuthenticated}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
 
-      <BulkUploadModal
-        isOpen={isBulkModalOpen}
-        onClose={() => setIsBulkModalOpen(false)}
-        onUpload={handleBulkUpload}
-        categoryId={selectedCategory}
-      />
+      <AnimatePresence>
+        {isNewCategoryModalOpen && (
+          <NewCategoryModal
+            isOpen={true}
+            onClose={() => setIsNewCategoryModalOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      <CategoryModal
-        isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-      />
-    </div>
+      <AnimatePresence>
+        {editingCategory && (
+          <NewCategoryModal
+            isOpen={true}
+            onClose={() => setEditingCategory(null)}
+            editCategory={editingCategory}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
-};
+});
 
 interface CategoryButtonProps {
   category: Category;
   isSelected: boolean;
   onClick: () => void;
-  onDelete?: (e: React.MouseEvent) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  isAuthenticated: boolean;
 }
 
-const CategoryButton: React.FC<CategoryButtonProps> = ({ 
+export const CategoryButton: React.FC<CategoryButtonProps> = React.memo(({ 
   category, 
   isSelected, 
-  onClick, 
-  onDelete 
+  onClick,
+  onEdit,
+  onDelete,
+  isAuthenticated
 }) => {
+  const isCustom = !category.isSystem;
+  const showLockIcon = !isAuthenticated && category.id !== SELECT_CATEGORY_ID;
+
   return (
-    <motion.button
-      onClick={onClick}
-      className={`
-        relative
-        flex flex-col items-center justify-center p-4
-        bg-white rounded-lg shadow-sm
-        ${isSelected ? 'ring-2 ring-blue-500' : 'hover:bg-gray-50'}
-        transition-colors
-      `}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+    <motion.div
+      layout
+      className="relative group"
     >
-      <span className="text-3xl mb-2">{category.icon}</span>
-      <span className="text-sm font-medium text-gray-900">{category.name}</span>
-      
-      {onDelete && (
-        <button
-          onClick={onDelete}
-          className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors z-10"
-          title="Excluir categoria"
+      <motion.div
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        className={`
+          relative
+          flex flex-col items-center justify-center gap-2 p-3 h-[100px]
+          bg-white dark:bg-gray-800 rounded-lg shadow-sm cursor-pointer
+          ${isCustom ? 'bg-gradient-to-br from-purple-50 to-white dark:from-purple-950 dark:to-gray-800 border-2 border-purple-200 dark:border-purple-800' : ''}
+          ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}
+          ${showLockIcon ? 'opacity-60' : ''}
+          transition-all duration-200
+        `}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onClick();
+          }
+        }}
+      >
+        {showLockIcon && (
+          <div className="absolute top-2 right-2 p-1 rounded-full bg-gray-100 dark:bg-gray-700 transform transition-all duration-200 group-hover:scale-110 group-hover:bg-gray-200 dark:group-hover:bg-gray-600">
+            <Lock className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 transition-colors duration-200 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
+          </div>
+        )}
+        <div
+          className="flex items-center justify-center w-12 h-12 rounded-full mb-1 transition-transform group-hover:scale-110"
+          style={{ 
+            backgroundColor: `${category.color}15`,
+            boxShadow: `0 0 0 2px ${category.color}10`
+          }}
         >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )}
-      
-      {isSelected && (
-        <motion.div
-          className="absolute inset-0 ring-2 ring-blue-500 rounded-lg"
-          layoutId="outline"
-          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-        />
-      )}
-    </motion.button>
+          <span className="text-2xl" style={{ color: category.color }}>{category.icon}</span>
+        </div>
+        <span className="text-sm font-medium text-center text-gray-900 dark:text-gray-100 line-clamp-2">
+          {category.name}
+        </span>
+        
+        {isCustom && (
+          <div className="absolute top-2 right-2 flex gap-1">
+            {onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-500 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
+        
+        {isSelected && (
+          <motion.div
+            className="absolute inset-0 ring-2 ring-blue-500 rounded-lg"
+            layoutId="outline"
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+          />
+        )}
+      </motion.div>
+    </motion.div>
   );
-};
+});

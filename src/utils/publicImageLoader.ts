@@ -1,5 +1,4 @@
 import { PictureCard } from '../types';
-import { useCardManagementStore } from '../store/useCardManagementStore';
 
 // Default system categories
 const DEFAULT_CATEGORIES = [
@@ -10,33 +9,38 @@ const DEFAULT_CATEGORIES = [
 
 export async function loadPublicImages(): Promise<PictureCard[]> {
   const cards: PictureCard[] = [];
-  
-  // Get all categories from the store, including custom ones
-  const store = useCardManagementStore.getState();
-  const allCategories = store.categories.map(cat => cat.id);
-  const categories = [...new Set([...DEFAULT_CATEGORIES, ...allCategories])];
+  const categories = DEFAULT_CATEGORIES;
 
-  console.log('Starting to load public images...', { categories });
+  console.log('Loading public images...', { categories });
 
   try {
     // Import all images from the public directory
-    const images = Object.entries(
+    const publicImages = Object.entries(
       import.meta.glob('/public/images/**/*.{png,jpg,jpeg,webp}', {
         eager: true,
         as: 'url'
       })
     );
 
-    console.log('Found images:', images.map(([path]) => path));
+    console.log('Initial image paths found:', publicImages.length);
+    console.log('Raw paths:', JSON.stringify(publicImages.map(([path]) => path), null, 2));
+    
+    if (publicImages.length === 0) {
+      console.warn('No images found in any of the searched paths!');
+      return [];
+    }
+
+    const images = publicImages;
+    
+    console.log('After deduplication:', images.length, 'images');
+    console.log('Normalized paths:', JSON.stringify(images.map(([path]) => path), null, 2));
 
     for (const category of categories) {
       try {
         // Filter images for current category
         const categoryImages = images
           .filter(([path]) => {
-            const isInCategory = path.toLowerCase().includes(`/${category.toLowerCase()}/`);
-            console.log(`Checking path: ${path} for category: ${category} - matches: ${isInCategory}`);
-            return isInCategory;
+            return path.toLowerCase().includes(`/public/images/${category.toLowerCase()}/`);
           })
           .map(([path, url]) => {
             const fileName = path.split('/').pop()?.split('.')[0] || '';
@@ -48,10 +52,17 @@ export async function loadPublicImages(): Promise<PictureCard[]> {
               .join(' ');
             console.log(`Creating card for image: ${path} -> ${url}`);
             
+            // Ensure the URL is properly formatted
+            const imageUrl = (url as string).startsWith('/')
+              ? url
+              : `/${url.replace(/^\.\.\/|\.\//g, '')}`;
+
+            console.log(`Processing image URL: ${imageUrl} (original: ${url})`);
+            
             return {
               id: `public-${category}-${fileName}`,
               categoryId: category,
-              imageUrl: url as string,
+              imageUrl,
               name: label,
               label: label, // Add label field for display
               description: label,
@@ -74,6 +85,10 @@ export async function loadPublicImages(): Promise<PictureCard[]> {
     }
 
     console.log(`Total public images loaded: ${cards.length}`);
+    if (cards.length === 0) {
+      console.warn('No cards were created! This might indicate a problem with image paths or categories.');
+      console.log('Available categories:', categories);
+    }
     return cards;
   } catch (error) {
     console.error('Failed to load public images:', error);

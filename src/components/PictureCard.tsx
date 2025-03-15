@@ -13,6 +13,9 @@ export const PictureCard: React.FC<PictureCardProps> = ({
   onClick,
   isSelected = false,
 }) => {
+  // Use display_name for visual label and name for voice
+  const displayName = card.display_name || card.label;
+
   return (
     <motion.div
       onClick={onClick}
@@ -26,12 +29,17 @@ export const PictureCard: React.FC<PictureCardProps> = ({
     >
       <img
         src={card.imageUrl}
-        alt={card.label}
+        alt={displayName}
         className="w-full h-full object-cover"
+        onError={(e) => {
+          const img = e.target as HTMLImageElement;
+          img.src = '/placeholder.png'; // Add a placeholder image
+          img.onerror = null; // Prevent infinite loop
+        }}
       />
       <div className="absolute bottom-0 left-0 right-0 bg-black/20 backdrop-blur-sm p-2">
         <p className="text-white text-sm font-medium truncate text-center">
-          {card.label}
+          {displayName}
         </p>
       </div>
     </motion.div>

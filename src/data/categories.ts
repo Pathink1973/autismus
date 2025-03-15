@@ -1,103 +1,104 @@
 import { Category } from '../types';
 import { translations } from '../i18n/translations';
 
+// Default system categories that match the public/images folder structure
 export const categories: Category[] = [
   {
     id: 'social',
     name: translations.categories.social,
     icon: '👥',
-    color: 'bg-purple-500',
+    color: '#9333ea',
     group: 'social'
   },
   {
     id: 'actions',
     name: translations.categories.actions,
     icon: '🏃',
-    color: 'bg-blue-500',
+    color: '#3b82f6',
     group: 'actions'
   },
   {
     id: 'emotions',
     name: translations.categories.emotions,
     icon: '😊',
-    color: 'bg-yellow-500',
+    color: '#eab308',
     group: 'expressions'
   },
   {
     id: 'opinion',
     name: translations.categories.opinion,
     icon: '💭',
-    color: 'bg-sky-500',
+    color: '#0ea5e9',
     group: 'communication'
   },
   {
     id: 'leisure',
     name: translations.categories.leisure,
     icon: '🎮',
-    color: 'bg-indigo-500',
+    color: '#6366f1',
     group: 'activities'
   },
   {
     id: 'food',
     name: translations.categories.food,
     icon: '🍎',
-    color: 'bg-red-500',
+    color: '#ef4444',
     group: 'daily'
   },
   {
     id: 'clothes',
     name: translations.categories.clothes,
     icon: '👕',
-    color: 'bg-indigo-500',
+    color: '#818cf8',
     group: 'daily'
   },
   {
     id: 'objects',
     name: translations.categories.objects,
     icon: '📱',
-    color: 'bg-gray-500',
+    color: '#6b7280',
     group: 'things'
   },
   {
     id: 'places',
     name: translations.categories.places,
     icon: '🏠',
-    color: 'bg-green-500',
+    color: '#22c55e',
     group: 'places'
   },
   {
     id: 'body',
     name: translations.categories.body,
     icon: '👤',
-    color: 'bg-pink-500',
+    color: '#ec4899',
     group: 'body'
   },
   {
     id: 'animals',
     name: translations.categories.animals,
     icon: '🐾',
-    color: 'bg-amber-500',
+    color: '#f59e0b',
     group: 'nature'
   },
   {
     id: 'colors',
     name: translations.categories.colors,
     icon: '🎨',
-    color: 'bg-violet-500',
+    color: '#8b5cf6',
     group: 'expressions'
   },
   {
     id: 'numbers',
     name: translations.categories.numbers,
     icon: '🔢',
-    color: 'bg-teal-500',
+    color: '#14b8a6',
     group: 'general'
   },
   {
     id: 'weather',
     name: translations.categories.weather,
     icon: '☀️',
-    color: 'bg-yellow-500',
+    color: '#fbbf24',
     group: 'weather'
   }
 ];

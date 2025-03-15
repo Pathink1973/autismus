@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AuthCallback from './components/auth/AuthCallback';
 import { CategoryList } from './components/CategoryList';
 import { PictureGrid } from './components/PictureGrid';
 import { CommunicationBar } from './components/CommunicationBar';
@@ -8,14 +10,45 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { Logo } from './components/Logo';
 import { translations } from './i18n/translations';
 import { HelpCircle } from 'lucide-react';
+import { initializeCloudinarySync } from './services/cloudinarySync';
+import AuthComponent from './components/auth/AuthComponent';
 
-function App() {
+const MainApp = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
+    const initSync = async () => {
+      try {
+        setIsLoading(true);
+        cleanup = await initializeCloudinarySync();
+      } catch (error) {
+        console.error('Failed to initialize Cloudinary sync:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initSync();
+
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, []);
 
   return (
     <ThemeProvider>
       <div className="min-h-screen bg-[#F5F5F7] dark:bg-gray-900 transition-colors">
+        {isLoading && (
+          <div className="fixed inset-0 bg-white/80 dark:bg-gray-900/80 flex items-center justify-center z-50">
+            <div className="text-gray-900 dark:text-white">Loading...</div>
+          </div>
+        )}
         <header className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl sticky top-0 z-10 border-b border-gray-200/50 dark:border-gray-700/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -30,7 +63,7 @@ function App() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 justify-end">
                 <ThemeToggle />
                 <button
                   onClick={() => setIsInstructionsOpen(true)}
@@ -41,12 +74,13 @@ function App() {
                   </div>
                   <span className="font-medium">Instruções</span>
                 </button>
+                <AuthComponent />
               </div>
             </div>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-32">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-32 pt-6">
           <CategoryList
             selectedCategory={selectedCategory}
             onSelect={setSelectedCategory}
@@ -60,8 +94,21 @@ function App() {
           isOpen={isInstructionsOpen}
           onClose={() => setIsInstructionsOpen(false)}
         />
+
+
       </div>
     </ThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/*" element={<MainApp />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
