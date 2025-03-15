@@ -168,7 +168,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     storage: window.localStorage,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
   },
   global: {
     headers: {
@@ -176,5 +176,31 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     }
   }
 });
+
+// Determine the correct redirect URL based on the environment
+// This prevents the port :4000 from being included in production redirects
+const getRedirectUrl = () => {
+  // Use the environment variable defined in vite.config.ts
+  if (typeof process !== 'undefined' && process.env && process.env.VITE_APP_URL) {
+    return process.env.VITE_APP_URL;
+  }
+  
+  // Fallback to the window.location logic if the environment variable is not available
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? window.location.origin  // Use full origin with port in development
+    : 'https://autismus.netlify.app';  // Use production URL without port
+};
+
+// Override the signIn method to include the correct redirect URL
+const originalSignIn = supabase.auth.signInWithOAuth;
+supabase.auth.signInWithOAuth = async (options) => {
+  return originalSignIn({
+    ...options,
+    options: {
+      ...options.options,
+      redirectTo: getRedirectUrl()
+    }
+  });
+};
 
 export { supabase };
