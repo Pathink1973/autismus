@@ -177,30 +177,36 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Determine the correct redirect URL based on the environment
-// This prevents the port :4000 from being included in production redirects
-const getRedirectUrl = () => {
-  // Use the environment variable defined in vite.config.ts
-  if (typeof process !== 'undefined' && process.env && process.env.VITE_APP_URL) {
-    return process.env.VITE_APP_URL;
+// Helper function to get the correct redirect URL based on the environment
+export const getRedirectUrl = () => {
+  // For production (Netlify)
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://autismus.netlify.app';
   }
-  
-  // Fallback to the window.location logic if the environment variable is not available
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? window.location.origin  // Use full origin with port in development
-    : 'https://autismus.netlify.app';  // Use production URL without port
+  // For local development
+  return window.location.origin;
 };
 
-// Override the signIn method to include the correct redirect URL
-const originalSignIn = supabase.auth.signInWithOAuth;
-supabase.auth.signInWithOAuth = async (options) => {
-  return originalSignIn({
-    ...options,
-    options: {
-      ...options.options,
-      redirectTo: getRedirectUrl()
-    }
-  });
+// Export a helper function for Google sign-in that includes the correct redirect URL
+export const signInWithGoogle = async () => {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: getRedirectUrl(),
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
+    });
+    
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Login error:', error);
+    return { data: null, error };
+  }
 };
 
 export { supabase };

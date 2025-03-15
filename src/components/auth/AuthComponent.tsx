@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase, signInWithGoogle as supabaseSignInWithGoogle } from "../../lib/supabase";
 import { User } from "@supabase/supabase-js";
 
 // Error messages for different scenarios
@@ -94,16 +94,7 @@ const AuthComponent = () => {
       setLoading(true);
       setError(null);
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.protocol}//${window.location.hostname}:4000`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
+      const { error } = await supabaseSignInWithGoogle();
 
       if (error) throw error;
     } catch (error) {
