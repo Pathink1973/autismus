@@ -23,7 +23,6 @@ export async function loadPublicImages(): Promise<PictureCard[]> {
     );
 
     console.log('Initial image paths found:', publicImages.length);
-    console.log('Raw paths:', JSON.stringify(publicImages.map(([path]) => path), null, 2));
     
     if (publicImages.length === 0) {
       console.warn('No images found in any of the searched paths!');
@@ -32,9 +31,6 @@ export async function loadPublicImages(): Promise<PictureCard[]> {
 
     const images = publicImages;
     
-    console.log('After deduplication:', images.length, 'images');
-    console.log('Normalized paths:', JSON.stringify(images.map(([path]) => path), null, 2));
-
     for (const category of categories) {
       try {
         // Filter images for current category
@@ -50,14 +46,18 @@ export async function loadPublicImages(): Promise<PictureCard[]> {
               .split(' ')
               .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
               .join(' ');
-            console.log(`Creating card for image: ${path} -> ${url}`);
             
-            // Ensure the URL is properly formatted
-            const imageUrl = (url as string).startsWith('/')
-              ? url
-              : `/${url.replace(/^\.\.\/|\.\//g, '')}`;
-
-            console.log(`Processing image URL: ${imageUrl} (original: ${url})`);
+            // Fix the image URL to work in both development and production
+            // Remove /public prefix from the path to make it work in production
+            const imagePath = path.replace('/public/', '/');
+            
+            // In development, use the URL provided by Vite
+            // In production, construct the URL based on the path
+            const imageUrl = import.meta.env.DEV 
+              ? (url as string)
+              : imagePath;
+            
+            console.log(`Processing image: ${fileName}, URL: ${imageUrl}`);
             
             return {
               id: `public-${category}-${fileName}`,
