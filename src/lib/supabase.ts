@@ -195,7 +195,7 @@ export const signInWithGoogle = async () => {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const redirectTo = isLocalhost 
       ? `${window.location.origin}/auth/callback`
-      : 'https://autismus.netlify.app/auth/callback';
+      : `${getRedirectUrl()}/auth/callback`;
     
     console.log('Signing in with Google, redirectTo:', redirectTo);
     

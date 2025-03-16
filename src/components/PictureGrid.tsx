@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, Home, Sparkles } from 'lucide-react';
+import { LogIn, Sparkles } from 'lucide-react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { useStore } from '../store/useStore';
 import { useCardManagementStore } from '../store/useCardManagementStore';
