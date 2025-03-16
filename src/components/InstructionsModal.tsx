@@ -88,7 +88,7 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
                   <li>Escreva a nova categoria, e clique no botão "Criar Categoria";</li>
                   <li>Pode adicionar um icone e uma cor ao botão "Criar Categoria";</li>
                   <li>Aparece um novo cartão com a categoria criada;</li>
-                  <li>Clicar no botão "Adicionar Cartão", atribua um nome, clique no botão "Arquivo" e depois escolher a imagem pretendida no seu computador, ou URL, imagem da internet.;</li>
+                  <li>Clicar no botão "Adicionar Cartão", atribua um nome, clique no botão "Arquivo" e depois escolher a imagem pretendida no seu computador, ou URL, imagem da internet;</li>
                   <li>Pronto! As imagens já estão disponíveis para serem usadas na comunicação!</li>
                 </ol>
 
