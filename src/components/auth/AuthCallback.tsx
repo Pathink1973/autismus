@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 const AuthCallback = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Handle the OAuth callback
@@ -21,7 +23,6 @@ const AuthCallback = () => {
           
           try {
             // Explicitly exchange the code for a session
-            // This is a crucial step that needs to be handled manually
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
             
             if (error) {
@@ -35,8 +36,8 @@ const AuthCallback = () => {
               // Store the session in localStorage
               localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
               
-              // Redirect to home page
-              window.location.href = '/';
+              // Use React Router's navigate instead of window.location for a cleaner transition
+              navigate('/', { replace: true });
               return;
             } else {
               console.error('No session returned after code exchange');
@@ -47,9 +48,9 @@ const AuthCallback = () => {
             setError('Authentication error. Please try again.');
             setLoading(false);
             
-            // Redirect after a delay
+            // Use React Router's navigate for redirection after error
             setTimeout(() => {
-              window.location.href = '/';
+              navigate('/', { replace: true });
             }, 3000);
             return;
           }
@@ -73,17 +74,17 @@ const AuthCallback = () => {
             
             console.log('Session set from tokens');
             
-            // Redirect to home page
-            window.location.href = '/';
+            // Use React Router's navigate for redirection
+            navigate('/', { replace: true });
             return;
           } catch (tokenError) {
             console.error('Error setting session from tokens:', tokenError);
             setError('Authentication error. Please try again.');
             setLoading(false);
             
-            // Redirect after a delay
+            // Use React Router's navigate for redirection after error
             setTimeout(() => {
-              window.location.href = '/';
+              navigate('/', { replace: true });
             }, 3000);
             return;
           }
@@ -94,9 +95,9 @@ const AuthCallback = () => {
         setError('Authentication failed. Please try again.');
         setLoading(false);
         
-        // Redirect after a delay
+        // Use React Router's navigate for redirection after error
         setTimeout(() => {
-          window.location.href = '/';
+          navigate('/', { replace: true });
         }, 3000);
         
       } catch (error) {
@@ -104,15 +105,15 @@ const AuthCallback = () => {
         setError('Authentication error. Please try again.');
         setLoading(false);
         
-        // Redirect after a delay
+        // Use React Router's navigate for redirection after error
         setTimeout(() => {
-          window.location.href = '/';
+          navigate('/', { replace: true });
         }, 3000);
       }
     };
 
     handleAuthCallback();
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
