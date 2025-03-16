@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase, signInWithGoogle as supabaseSignInWithGoogle } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import { User } from "@supabase/supabase-js";
 
 // Error messages for different scenarios
@@ -89,19 +89,26 @@ const AuthComponent = () => {
     setTimeout(() => setError(null), 3000);
   };
 
-  const signInWithGoogle = async () => {
+  const handleGoogleLogin = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const { error } = await supabaseSignInWithGoogle();
-
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'https://autismus.netlify.app/auth/v1/callback'
+        }
+      });
+      
       if (error) throw error;
     } catch (error) {
       console.error("Login error:", error);
       // Only show network errors to user
       if (error instanceof Error && error.message.includes('network')) {
         showError(ERROR_MESSAGES.NETWORK);
+      } else {
+        showError(ERROR_MESSAGES.AUTH);
       }
     } finally {
       setLoading(false);
@@ -177,7 +184,7 @@ const AuthComponent = () => {
         </button>
       ) : (
         <button
-          onClick={signInWithGoogle}
+          onClick={handleGoogleLogin}
           disabled={loading}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] group"
         >

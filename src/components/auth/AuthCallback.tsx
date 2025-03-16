@@ -14,6 +14,16 @@ const AuthCallback = () => {
         console.log('Auth callback handling started');
         console.log('Current URL:', window.location.href);
         
+        // Check if we're on the v1 callback path
+        if (window.location.pathname.includes('/auth/v1/callback')) {
+          console.log('Detected v1 callback path, redirecting to standard callback');
+          // Redirect to the standard callback path that our app handles
+          const url = new URL(window.location.href);
+          url.pathname = '/auth/callback';
+          window.location.href = url.toString();
+          return;
+        }
+        
         // Extract the code from URL query parameters
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');

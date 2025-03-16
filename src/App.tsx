@@ -110,6 +110,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/v1/callback" element={<AuthCallback />} />
         <Route path="/*" element={<MainApp />} />
       </Routes>
     </BrowserRouter>
