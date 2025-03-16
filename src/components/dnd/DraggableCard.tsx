@@ -10,6 +10,7 @@ interface DraggableCardProps {
   onClick: () => void;
   onDeleteCard: () => void;
   isSelected: boolean;
+  isDraggable?: boolean; // Optional prop to control draggability
 }
 
 export const DraggableCard: React.FC<DraggableCardProps> = ({
@@ -18,12 +19,35 @@ export const DraggableCard: React.FC<DraggableCardProps> = ({
   onClick,
   onDeleteCard,
   isSelected,
+  isDraggable = true, // Default to true for backward compatibility
 }) => {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     onDeleteCard();
   };
+
+  // If the card is not draggable, render it without Draggable wrapper
+  if (!isDraggable) {
+    return (
+      <div className="relative group">
+        <PictureCard
+          card={card}
+          onClick={onClick}
+          isSelected={isSelected}
+        />
+        {!card.isSystem && (
+          <button
+            onClick={handleDelete}
+            className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600 active:bg-red-700 z-10"
+            aria-label={`Excluir ${card.label}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <Draggable draggableId={card.id} index={index}>

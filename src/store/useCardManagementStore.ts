@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase, TABLES, DB_ERRORS } from '../lib/supabase';
-import { Card, Category } from '../types';
+import { Category, PictureCard } from '../types';
 import { categories as defaultCategories } from '../data/categories';
 import { loadPublicImages } from '../utils/publicImageLoader';
 import { PostgrestError } from '@supabase/supabase-js';
@@ -31,7 +31,7 @@ const systemCategories = defaultCategories.map((category: Category) => ({
 }));
 
 interface CardManagementState {
-  cards: Card[];
+  cards: PictureCard[];
   categories: Category[];
   temporaryCategory: Category | null;
   isLoading: boolean;
@@ -40,8 +40,8 @@ interface CardManagementState {
 
 interface CardManagementActions {
   setTemporaryCategory: (category: Category | null) => void;
-  addCustomCard: (card: Omit<Card, 'id'>) => Promise<Card>;
-  addCustomCards: (cards: Omit<Card, 'id'>[]) => Promise<Card[]>;
+  addCustomCard: (card: Omit<PictureCard, 'id'>) => Promise<PictureCard>;
+  addCustomCards: (cards: Omit<PictureCard, 'id'>[]) => Promise<PictureCard[]>;
   addCustomCategory: (category: Omit<Category, 'id'>) => Promise<Category>;
   updateCategory: (category: { id: string; name: string; icon: string; color?: string }) => Promise<Category>;
   deleteCategory: (categoryId: string) => Promise<void>;
@@ -69,7 +69,7 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
 
       // Load system categories and public images first
       let allCategories = [...systemCategories];
-      let publicImages: Card[] = [];
+      let publicImages: PictureCard[] = [];
       
       try {
         publicImages = await loadPublicImages();
@@ -252,7 +252,7 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
     }
   },
 
-  addCustomCards: async (cards: Omit<Card, 'id'>[]) => {
+  addCustomCards: async (cards: Omit<PictureCard, 'id'>[]) => {
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -407,6 +407,9 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
 
+      // Get all cards in this category first
+      const cardsInCategory = state.cards.filter(c => c.category_id === categoryId);
+      
       // First update the local state to provide immediate feedback
       set(state => ({
         categories: state.categories.filter(c => c.id !== categoryId),
@@ -414,7 +417,20 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
         error: null
       }));
 
-      // Delete associated cards first
+      // Delete images from Cloudinary for each card
+      const deletePromises = cardsInCategory.map(async (card) => {
+        try {
+          await deleteImage(card.id);
+        } catch (error) {
+          console.error(`Failed to delete image for card ${card.id}:`, error);
+          // Continue with other deletions even if one fails
+        }
+      });
+      
+      // Wait for all image deletions to complete
+      await Promise.all(deletePromises);
+
+      // Delete associated cards from Supabase
       const { error: cardsError } = await supabase
         .from(TABLES.CARDS)
         .delete()
@@ -459,7 +475,7 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
   deleteCard: async (cardId: string) => {
     try {
       const { cards } = useCardManagementStore.getState();
-      const cardToDelete = cards.find((card: Card) => card.id === cardId);
+      const cardToDelete = cards.find((card: PictureCard) => card.id === cardId);
       
       if (!cardToDelete) {
         throw new Error('Cartão não encontrado');
@@ -520,17 +536,17 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
       // Update state optimistically
       set(state => {
         const newCards = [...state.cards];
-        const sourceCards = newCards.filter((card: Card) => card.categoryId === sourceCategory);
+        const sourceCards = newCards.filter((card: PictureCard) => card.categoryId === sourceCategory);
         const [movedCard] = sourceCards.splice(sourceIndex, 1);
         
         if (movedCard) {
           // Update card's category and order
           movedCard.categoryId = targetCategory;
-          const targetCards = newCards.filter((card: Card) => card.categoryId === targetCategory);
+          const targetCards = newCards.filter((card: PictureCard) => card.categoryId === targetCategory);
           targetCards.splice(targetIndex, 0, movedCard);
           
           // Update order for all affected cards
-          targetCards.forEach((card: Card, index: number) => {
+          targetCards.forEach((card: PictureCard, index: number) => {
             card.order = index;
           });
 
@@ -545,7 +561,7 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
 
       // Get updated state
       const state = useCardManagementStore.getState();
-      const movedCard = state.cards.find((card: Card) => 
+      const movedCard = state.cards.find((card: PictureCard) => 
         card.categoryId === targetCategory && card.order === targetIndex
       );
 
@@ -573,7 +589,7 @@ export const useCardManagementStore = create<CardManagementStore>((set) => ({
       }
 
       // Update order for other affected cards
-      const targetCards = state.cards.filter((card: Card) => card.categoryId === targetCategory);
+      const targetCards = state.cards.filter((card: PictureCard) => card.categoryId === targetCategory);
       
       for (const card of targetCards) {
         const { error: updateError } = await supabase

@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
-    <title>Autismus CAA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu&family=Baloo+Tamma+2:wght@800&display=swap" rel="stylesheet">
+    <title>Autismus</title>
     <style>
       body {
         font-family: 'Ubuntu', sans-serif;
@@ -16,9 +16,16 @@
       #appIcon {
         cursor: pointer;
       }
+      .font-baloo {
+        font-family: 'Baloo Tamma 2', cursive;
+        font-weight: 800;
+      }
     </style>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
+        // Force the document title to be 'Autismus'
+        document.title = 'Autismus';
+        
         const icon = document.querySelector('link[rel="icon"]');
         if (icon) {
           icon.addEventListener('click', function() {

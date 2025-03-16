@@ -6,12 +6,16 @@ const AuthCallback = () => {
     // Handle the OAuth callback
     const handleAuthCallback = async () => {
       try {
+        console.log('Auth callback handling started');
+        console.log('Current URL:', window.location.href);
+        
         // First try to restore the session from URL
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
 
         if (accessToken) {
+          console.log('Found access token in URL hash');
           // Set the session manually if we have the tokens
           const { error: setSessionError } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -29,16 +33,31 @@ const AuthCallback = () => {
           throw new Error('No session found after authentication');
         }
         
+        console.log('Session successfully established');
+        
         // Store session in localStorage for persistence
         window.localStorage.setItem('supabase.auth.token', JSON.stringify(session));
         
-        // Redirect back to the main page
-        // Ensure we redirect to the correct port
-        window.location.href = `${window.location.protocol}//${window.location.hostname}:4000/`;
+        // Determine the correct redirect URL based on the current hostname
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const redirectUrl = isLocalhost 
+          ? window.location.origin 
+          : 'https://autismus.netlify.app';
+        
+        console.log('Redirecting to:', redirectUrl);
+        
+        // Redirect back to the main page with the correct URL
+        window.location.href = redirectUrl;
       } catch (error) {
         console.error('Error in auth callback:', error);
+        // Determine the correct redirect URL based on the current hostname
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const redirectUrl = isLocalhost 
+          ? window.location.origin 
+          : 'https://autismus.netlify.app';
+        
         // Redirect to home page with error message
-        window.location.href = `${window.location.protocol}//${window.location.hostname}:4000/?error=auth-callback-failed`;
+        window.location.href = `${redirectUrl}?error=auth-callback-failed`;
       }
     };
 

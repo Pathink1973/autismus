@@ -49,6 +49,13 @@ export const CategoryList: React.FC<CategoryListProps> = React.memo(({
   const displayCategories = useMemo(() => {
     let allCategories = [...categories];
     
+    // Ensure all custom categories have isSystem property set to false
+    allCategories.forEach(category => {
+      if (!category.hasOwnProperty('isSystem')) {
+        category.isSystem = false;
+      }
+    });
+    
     // Only show system categories if not authenticated
     if (!isAuthenticated) {
       allCategories = allCategories.filter(cat => cat.isSystem);
@@ -63,9 +70,11 @@ export const CategoryList: React.FC<CategoryListProps> = React.memo(({
       );
       
       // Add temporary category with the same group as similar category
+      // and ensure isSystem is set to false
       allCategories.push({
         ...temporaryCategory,
-        group: similarCategory?.group || 'social'
+        group: similarCategory?.group || 'social',
+        isSystem: false
       });
     }
 
@@ -98,8 +107,6 @@ export const CategoryList: React.FC<CategoryListProps> = React.memo(({
       return (a.group || '').localeCompare(b.group || '');
     });
   }, [categories, temporaryCategory, isAuthenticated]);
-
-
 
   const handleCategoryClick = (categoryId: string) => {
     if (!isAuthenticated && categoryId !== SELECT_CATEGORY_ID) {
