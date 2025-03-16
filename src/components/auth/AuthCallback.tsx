@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const AuthCallback = () => {
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     // Handle the OAuth callback
     const handleAuthCallback = async () => {
@@ -14,7 +16,51 @@ const AuthCallback = () => {
         const code = urlParams.get('code');
         
         if (code) {
-          console.log('Found authorization code in URL');
+          console.log('Found authorization code in URL:', code);
+          
+          // Exchange the code for a session
+          // This is handled automatically by Supabase when getSession is called
+          const { data, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('Error getting session:', sessionError);
+            throw sessionError;
+          }
+          
+          if (!data.session) {
+            console.log('No session found, waiting for session to be established...');
+            
+            // Wait a bit and try again - sometimes there's a delay
+            setTimeout(async () => {
+              try {
+                const { data: retryData, error: retryError } = await supabase.auth.getSession();
+                
+                if (retryError) throw retryError;
+                
+                if (retryData.session) {
+                  console.log('Session established on retry');
+                  window.location.href = '/';
+                } else {
+                  console.error('Failed to establish session after retry');
+                  setError('Failed to establish session. Please try logging in again.');
+                  setTimeout(() => {
+                    window.location.href = '/';
+                  }, 3000);
+                }
+              } catch (retryError) {
+                console.error('Error in retry:', retryError);
+                setError('Authentication error. Please try again.');
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 3000);
+              }
+            }, 2000);
+            return;
+          }
+          
+          console.log('Session successfully established');
+          window.location.href = '/';
+          return;
         }
         
         // First try to restore the session from URL hash (for implicit flow)
@@ -31,46 +77,25 @@ const AuthCallback = () => {
           });
           
           if (setSessionError) throw setSessionError;
+          
+          console.log('Session set from tokens');
+          window.location.href = '/';
+          return;
         }
 
-        // Double-check we have a valid session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
-        if (!session) {
-          console.warn('No session found after authentication callback');
-          // If we have a code but no session, we might need to exchange the code
-          if (code) {
-            console.log('Attempting to exchange code for session');
-            // The session should be automatically set by Supabase's internal handling
-            // Just wait a moment for it to complete
-            setTimeout(async () => {
-              const { data: { session: newSession } } = await supabase.auth.getSession();
-              if (newSession) {
-                console.log('Session established after waiting');
-                window.location.href = '/';
-              } else {
-                console.error('Failed to establish session after waiting');
-                window.location.href = '/?auth=failed';
-              }
-            }, 2000);
-            return;
-          } else {
-            throw new Error('No session or code found after authentication');
-          }
-        }
+        // If we get here without a code or tokens, something went wrong
+        console.error('No code or tokens found in callback URL');
+        setError('Authentication failed. Please try again.');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
         
-        console.log('Session successfully established');
-        
-        // Store session in localStorage for persistence
-        window.localStorage.setItem('supabase.auth.token', JSON.stringify(session));
-        
-        // Redirect back to the main page
-        window.location.href = '/';
       } catch (error) {
         console.error('Error in auth callback:', error);
-        // Redirect to home page with error message
-        window.location.href = '/?error=auth-callback-failed';
+        setError('Authentication error. Please try again.');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
       }
     };
 
@@ -78,8 +103,23 @@ const AuthCallback = () => {
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400"></div>
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 dark:bg-gray-900">
+      <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+            {error ? 'Authentication Error' : 'Processing Authentication'}
+          </h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            {error || 'Please wait while we log you in...'}
+          </p>
+        </div>
+        
+        {!error && (
+          <div className="flex justify-center mt-5">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

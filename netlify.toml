@@ -2,6 +2,14 @@
   publish = "dist"
   command = "npm run build"
 
+# Specifically handle the auth callback route
+[[redirects]]
+  from = "/auth/callback"
+  to = "/index.html"
+  status = 200
+  force = true
+
+# Handle all other routes
 [[redirects]]
   from = "/*"
   to = "/index.html"
