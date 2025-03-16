@@ -82,13 +82,13 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
                   Sem problema! A aplicação permite importar imagens para enriquecer ainda mais a comunicação.
                 </p>
 
-                <p className="text-gray-600 font-medium mb-2">É simples:</p>
+                <p className="text-gray-600 font-medium mb-2">Como Fazer?</p>
                 <ol className="list-decimal pl-6 space-y-2 text-gray-600">
-                  <li>Clique no cartão: Nova Categoria;</li>
+                  <li>Clique no botão: Nova Categoria;</li>
                   <li>Escreva a nova categoria, e clique no botão "Criar Categoria";</li>
+                  <li>Pode adicionar um icone e uma cor ao botão "Criar Categoria";</li>
                   <li>Aparece um novo cartão com a categoria criada;</li>
-                  <li>Clicar no botão "Adicionar Cartão", atribua um nome, clique no botão "Arquivo" e depois escolher a imagem pretendida no seu computador;</li>
-                  <li>O Botão "Upload em massa", permite importar várias imagens;</li>
+                  <li>Clicar no botão "Adicionar Cartão", atribua um nome, clique no botão "Arquivo" e depois escolher a imagem pretendida no seu computador, ou URL, imagem da internet.;</li>
                   <li>Pronto! As imagens já estão disponíveis para serem usadas na comunicação!</li>
                 </ol>
 
