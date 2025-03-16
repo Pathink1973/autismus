@@ -1,8 +1,13 @@
 // Post-build script to ensure proper handling of auth callback routes
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 console.log('Running post-build script...');
+
+// Get the current file's directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get the dist directory
 const distDir = path.resolve(__dirname, '../dist');

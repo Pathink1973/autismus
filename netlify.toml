@@ -2,12 +2,6 @@
   publish = "dist"
   command = "npm run build"
 
-[[plugins]]
-  package = "/netlify/plugins/fix-content-type"
-
-[[plugins]]
-  package = "/netlify/plugins/copy-auth-pages"
-
 # Specifically handle the auth v1 callback route
 [[redirects]]
   from = "/auth/v1/callback"
