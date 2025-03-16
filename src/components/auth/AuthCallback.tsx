@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 
 const AuthCallback = () => {
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Handle the OAuth callback
@@ -18,74 +19,82 @@ const AuthCallback = () => {
         if (code) {
           console.log('Found authorization code in URL:', code);
           
-          // Exchange the code for a session
-          // This is handled automatically by Supabase when getSession is called
-          const { data, error: sessionError } = await supabase.auth.getSession();
-          
-          if (sessionError) {
-            console.error('Error getting session:', sessionError);
-            throw sessionError;
-          }
-          
-          if (!data.session) {
-            console.log('No session found, waiting for session to be established...');
+          try {
+            // Explicitly exchange the code for a session
+            // This is a crucial step that needs to be handled manually
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
             
-            // Wait a bit and try again - sometimes there's a delay
-            setTimeout(async () => {
-              try {
-                const { data: retryData, error: retryError } = await supabase.auth.getSession();
-                
-                if (retryError) throw retryError;
-                
-                if (retryData.session) {
-                  console.log('Session established on retry');
-                  window.location.href = '/';
-                } else {
-                  console.error('Failed to establish session after retry');
-                  setError('Failed to establish session. Please try logging in again.');
-                  setTimeout(() => {
-                    window.location.href = '/';
-                  }, 3000);
-                }
-              } catch (retryError) {
-                console.error('Error in retry:', retryError);
-                setError('Authentication error. Please try again.');
-                setTimeout(() => {
-                  window.location.href = '/';
-                }, 3000);
-              }
-            }, 2000);
+            if (error) {
+              console.error('Error exchanging code for session:', error);
+              throw error;
+            }
+            
+            if (data.session) {
+              console.log('Session successfully established via code exchange');
+              
+              // Store the session in localStorage
+              localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
+              
+              // Redirect to home page
+              window.location.href = '/';
+              return;
+            } else {
+              console.error('No session returned after code exchange');
+              throw new Error('Failed to establish session after code exchange');
+            }
+          } catch (exchangeError) {
+            console.error('Error during code exchange:', exchangeError);
+            setError('Authentication error. Please try again.');
+            setLoading(false);
+            
+            // Redirect after a delay
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 3000);
             return;
           }
-          
-          console.log('Session successfully established');
-          window.location.href = '/';
-          return;
         }
         
-        // First try to restore the session from URL hash (for implicit flow)
+        // If no code is found, check for tokens in the URL hash (implicit flow)
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
 
         if (accessToken) {
           console.log('Found access token in URL hash');
-          // Set the session manually if we have the tokens
-          const { error: setSessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
-          });
-          
-          if (setSessionError) throw setSessionError;
-          
-          console.log('Session set from tokens');
-          window.location.href = '/';
-          return;
+          try {
+            // Set the session manually if we have the tokens
+            const { error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            
+            if (setSessionError) throw setSessionError;
+            
+            console.log('Session set from tokens');
+            
+            // Redirect to home page
+            window.location.href = '/';
+            return;
+          } catch (tokenError) {
+            console.error('Error setting session from tokens:', tokenError);
+            setError('Authentication error. Please try again.');
+            setLoading(false);
+            
+            // Redirect after a delay
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 3000);
+            return;
+          }
         }
 
         // If we get here without a code or tokens, something went wrong
         console.error('No code or tokens found in callback URL');
         setError('Authentication failed. Please try again.');
+        setLoading(false);
+        
+        // Redirect after a delay
         setTimeout(() => {
           window.location.href = '/';
         }, 3000);
@@ -93,6 +102,9 @@ const AuthCallback = () => {
       } catch (error) {
         console.error('Error in auth callback:', error);
         setError('Authentication error. Please try again.');
+        setLoading(false);
+        
+        // Redirect after a delay
         setTimeout(() => {
           window.location.href = '/';
         }, 3000);
@@ -114,7 +126,7 @@ const AuthCallback = () => {
           </p>
         </div>
         
-        {!error && (
+        {loading && !error && (
           <div className="flex justify-center mt-5">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
