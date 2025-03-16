@@ -80,7 +80,7 @@ export const CategoryList: React.FC<CategoryListProps> = React.memo(({
 
     const selectCategory: Category = {
       id: SELECT_CATEGORY_ID,
-      name: isAuthenticated ? 'Selecione uma categoria' : 'Categorias Bloqueadas',
+      name: isAuthenticated ? 'Escolha uma categoria' : 'Categorias Bloqueadas',
       icon: isAuthenticated ? '📋' : '🔒',
       color: '#6b7280',
       isSystem: true,
