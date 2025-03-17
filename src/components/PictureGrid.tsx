@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogIn, Sparkles } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { useStore } from '../store/useStore';
 import { useCardManagementStore } from '../store/useCardManagementStore';
@@ -165,7 +167,7 @@ export const PictureGrid: React.FC<PictureGridProps> = ({ categoryId }) => {
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-2xl border border-emerald-400 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
           >
-            <LogIn className="w-5 h-5" />
+            <FontAwesomeIcon icon={faLayerGroup} className="w-5 h-5" />
             <span className="font-medium">Adicionar Imagem</span>
           </button>
         </div>
@@ -206,13 +208,13 @@ export const PictureGrid: React.FC<PictureGridProps> = ({ categoryId }) => {
           <div className="flex flex-col items-center justify-center h-85 text-gray-600 dark:text-gray-400">
             <div className="flex flex-col items-center space-y-4 p-8 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-xl border border-gray-100 dark:border-gray-700 transform hover:scale-[1.02] transition-all duration-300">
               <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <LogIn className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                <FontAwesomeIcon icon={faLayerGroup} className="w-10 h-10 text-blue-600 dark:text-blue-400" />
               </div>
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Bem-vindo ao Autismus
+                Explorar Categorias?
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
-                Inicie sessão com a sua conta Google.
+              Selecione imagens para iniciar a comunicação.
               </p>
             </div>
           </div>
