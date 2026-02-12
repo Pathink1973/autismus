@@ -1,8 +1,8 @@
 // Cloudinary configuration
 const CLOUDINARY_CONFIG = {
-  cloudName: 'dfeqzodi3',
-  apiKey: '243961394377453',
-  apiSecret: 'xwwifCgXYZ5OcmB6a0xrjaadtSE'
+  cloudName: 'dowcuvkqn',
+  apiKey: '596152245134275',
+  apiSecret: '3iy1EkpPGhtGwqDU15Uq71LVJ90'
 };
 
 export interface CloudinaryUploadResult {
